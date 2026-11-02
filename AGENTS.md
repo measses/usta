@@ -25,7 +25,7 @@ There are two parts, run by two different agents:
 VERSION=v0.1.0
 curl -fsSLO "https://github.com/measses/usta/releases/download/$VERSION/usta-$VERSION.tar.gz"
 curl -fsSLO "https://github.com/measses/usta/releases/download/$VERSION/SHA256SUMS"
-shasum -a 256 -c SHA256SUMS --ignore-missing    # must print OK
+sha256sum -c SHA256SUMS 2>/dev/null || shasum -a 256 -c SHA256SUMS   # must print OK
 tar xzf "usta-$VERSION.tar.gz" && cd "usta-$VERSION"
 ```
 

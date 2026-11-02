@@ -1,5 +1,7 @@
 # usta
 
+![usta: Grok Bot hands the task, a filter you control decides what passes, Claude Code writes the code](docs/cover.png)
+
 Run **your own Claude Code** on **Grok Bot's cloud computer**, and decide exactly what of yours goes there.
 
 Grok Bot is a good manager: always on, reachable from your phone, good at research and routines. For writing code, many people prefer Claude Code. usta connects the two: a Grok bot hands a coding task to Claude Code on the bot's computer, Claude Code works in your repo on a branch, and the bot reports back. You approve the push.

@@ -1,5 +1,7 @@
 # usta
 
+![usta: Grok Bot görevi verir, senin kontrol ettiğin filtre neyin geçeceğine karar verir, kodu Claude Code yazar](docs/cover.png)
+
 **Kendi Claude Code'unu** **Grok Bot'un bulut bilgisayarında** çalıştır; oraya neyinin gideceğine sen karar ver.
 
 Grok Bot iyi bir yönetici: hep açık, telefondan ulaşılıyor, araştırmada ve rutinlerde güçlü. Kod yazmak için ise birçok kişi Claude Code'u tercih ediyor. usta ikisini bağlıyor. Bir Grok botu kod işini botun bilgisayarındaki Claude Code'a verir. Claude Code senin reponda yeni bir dalda çalışır, bot da sonucu sana raporlar. Push'u sen onaylarsın.
