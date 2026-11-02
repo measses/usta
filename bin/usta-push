@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Push a work branch after the human approved it. Refuses protected branches.
+#   usta-push <repo> <branch>
+set -euo pipefail
+
+KIT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=bin/_lib.sh
+source "$KIT/bin/_lib.sh"
+usta_load_env
+
+[[ $# -eq 2 ]] || { echo "usage: usta-push <repo> <branch>" >&2; exit 1; }
+repo="$1"; branch="$2"
+[[ "$repo" =~ ^[A-Za-z0-9._-]+$ && "$repo" != .* ]] || { echo "invalid repo name" >&2; exit 1; }
+[[ "$branch" =~ ^[A-Za-z0-9._/-]+$ && "$branch" != -* ]] || { echo "invalid branch name" >&2; exit 1; }
+for protected in ${USTA_PROTECTED_BRANCHES:-main master production prod}; do
+  [[ "$branch" == "$protected" ]] && { echo "refusing to push protected branch: $branch" >&2; exit 1; }
+done
+
+dir="$USTA_ROOT/repos/$repo"
+[[ -d "$dir/.git" ]] || { echo "no repo $repo" >&2; exit 1; }
+usta_secret GH_TOKEN
+export GIT_TOKEN="${GH_TOKEN:-}"
+usta_git_auth
+
+usta_git -C "$dir" push -u origin "$branch"
+echo "pushed $repo $branch"

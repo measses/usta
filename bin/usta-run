@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+# Run one Claude Code task headless inside an allowlisted repo.
+#   usta-run <repo> '<task>' [--resume <session_id>] [--max-turns N]
+# Prints a short JSON result; the full output goes to $USTA_ROOT/logs/.
+set -euo pipefail
+
+KIT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=bin/_lib.sh
+source "$KIT/bin/_lib.sh"
+usta_load_env
+export CLAUDE_CONFIG_DIR="$USTA_ROOT/claude-config"
+export PATH="$HOME/.local/bin:$PATH"
+
+fail() { python3 -c 'import json,sys; print(json.dumps({"is_error": True, "result": sys.argv[1]}, ensure_ascii=False))' "$1"; exit 1; }
+
+[[ $# -ge 2 ]] || fail "usage: usta-run <repo> '<task>' [--resume ID] [--max-turns N]"
+repo="$1"; task="$2"; shift 2
+resume=(); max_turns="${USTA_MAX_TURNS:-40}"
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --resume) [[ $# -ge 2 ]] || fail "--resume needs a session id"; resume=(--resume "$2"); shift 2 ;;
+    --max-turns) [[ "${2:-}" =~ ^[0-9]+$ ]] || fail "--max-turns needs a number"; max_turns="$2"; shift 2 ;;
+    *) fail "unknown argument: $1" ;;
+  esac
+done
+
+[[ "$repo" =~ ^[A-Za-z0-9._-]+$ && "$repo" != .* ]] || fail "invalid repo name"
+dir="$USTA_ROOT/repos/$repo"
+[[ -d "$dir/.git" ]] || fail "no repo $repo (add it to repos.txt and rerun setup.sh)"
+
+usta_secret CLAUDE_CODE_OAUTH_TOKEN
+[[ -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" ]] || fail "CLAUDE_CODE_OAUTH_TOKEN not set"
+if ! reason="$(usta_country_ok)"; then fail "run cancelled: $reason"; fi
+
+allowed="${USTA_ALLOWED_TOOLS:-Read,Edit,Write,Glob,Grep,TodoWrite,Task,\
+Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git add:*),\
+Bash(git commit:*),Bash(git switch:*),Bash(git checkout -b:*),Bash(git branch:*),Bash(git stash:*),\
+Bash(npm:*),Bash(npx:*),Bash(pnpm:*),Bash(node:*),Bash(python3:*),Bash(uv:*),Bash(pytest:*),\
+Bash(ls:*),Bash(cat:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Bash(mkdir:*),Bash(mv:*),Bash(cp:*)}"
+denied="${USTA_DENIED_TOOLS:-Bash(git push:*),Bash(git remote:*),Bash(curl:*),Bash(wget:*),Bash(ssh:*),\
+Bash(scp:*),Bash(env),Bash(printenv:*),Bash(rm -rf:*),Bash(sudo:*),Read(/$USTA_ROOT/secrets/**)}"
+
+ts="$(date -u +%Y%m%dT%H%M%SZ)"
+log="$USTA_ROOT/logs/$ts-$repo.json"
+limit="${USTA_TIMEOUT:-1800}"
+runner=()
+command -v timeout >/dev/null 2>&1 && runner=(timeout "$limit")
+
+cd "$dir"
+set +e
+${runner[@]+"${runner[@]}"} claude -p "$task" ${resume[@]+"${resume[@]}"} \
+  --output-format json --max-turns "$max_turns" --permission-mode acceptEdits \
+  --allowedTools "$allowed" --disallowedTools "$denied" > "$log" 2> "$log.err"
+code=$?
+set -e
+[[ $code -eq 124 ]] && fail "timed out after ${limit}s, log: $log"
+
+python3 - "$log" "$code" <<'EOF'
+import json, sys
+path, code = sys.argv[1], int(sys.argv[2])
+try:
+    d = json.load(open(path))
+except Exception:
+    print(json.dumps({"is_error": True, "result": f"could not read Claude output (exit {code})", "log": path}))
+    sys.exit(1)
+keep = {k: d.get(k) for k in ("is_error", "result", "session_id", "num_turns", "duration_ms", "total_cost_usd")}
+keep["log"] = path
+print(json.dumps(keep, ensure_ascii=False))
+EOF
