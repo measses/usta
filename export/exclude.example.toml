@@ -1,0 +1,37 @@
+# usta export configuration (example). Copy to exclude.local.toml, which is
+# gitignored: it will hold names you never want published.
+#
+#   python3 export/usta_export.py init             # interactive, writes this file
+#   python3 export/usta_export.py build --dry-run  # preview
+#   python3 export/usta_export.py build --approve  # write bundle/
+
+[source]
+claude_dir = "~/.claude"
+
+[include]
+# Nothing is included unless listed. Globs work: "*" means everything.
+# Names come from `usta_export.py inventory`.
+memory_projects = []          # e.g. ["-Users-you-code-side-project"]
+skills = []                   # e.g. ["my-skill", "design-*"]
+agents = []                   # e.g. ["*"]
+commands = []
+claude_md = false             # your global CLAUDE.md (often imports other files)
+extra_files = []              # other files under claude_dir, e.g. ["RULES.md"]
+
+[exclude]
+# Lines containing any of these are removed (case-insensitive). Use "re:..." for a regex.
+keywords = []                 # e.g. ["Acme Corp", "Jane Doe", "re:CASE-\\d+"]
+# Whole files or folders, as bundle paths (memory/<name>/..., skills/<name>/...).
+paths = []                    # e.g. ["memory/*/project_acme_*.md", "skills/foo/references/**"]
+# Categories to watch: work, health, finance, family, clients (flag only).
+presets = []
+
+[pii]
+# flag: list emails, phones, IBANs, ID and card numbers for review (build needs --accept-flags)
+# redact: replace them with <email>, <phone>, ... ; off: skip detection
+mode = "flag"
+allow = []                    # values that are fine to keep, e.g. ["noreply@example.com"]
+
+# Optional: nicer folder names for memory projects.
+# [include.memory_names]
+# "-Users-you-code-side-project" = "side-project"

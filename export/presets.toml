@@ -1,0 +1,37 @@
+# Seed words per category. Lines matching these are FLAGGED for your review,
+# never removed silently: generic words ("client", "doctor") also appear in
+# harmless places such as code docs. Put the names that must always go in
+# [exclude] keywords instead (your employer, clients, people).
+
+[work]
+words = [
+  "employer", "my company", "coworker", "colleague", "manager said", "internal only",
+  "confidential", "NDA", "ticket", "on-call", "payroll",
+  "işveren", "şirketimiz", "iş arkadaşım", "müdürüm", "gizli", "şirket içi", "mesai", "bordro",
+]
+
+[health]
+words = [
+  "diagnosis", "diagnosed", "prescription", "medication", "therapy", "therapist",
+  "doctor", "hospital", "symptom", "blood test",
+  "teşhis", "tanı", "reçete", "ilaç", "terapi", "doktor", "hastane", "tahlil", "rapor aldım",
+]
+
+[finance]
+words = [
+  "salary", "bank account", "credit card", "debt", "loan", "tax return", "net worth", "balance",
+  "maaş", "banka hesabı", "kredi kartı", "borç", "kredi", "vergi", "bakiye", "birikim",
+]
+
+[family]
+words = [
+  "my wife", "my husband", "my partner", "my son", "my daughter", "my mother", "my father",
+  "my kids", "girlfriend", "boyfriend",
+  "eşim", "kızım", "oğlum", "annem", "babam", "çocuklarım", "sevgilim", "kardeşim",
+]
+
+[clients]
+words = [
+  "client", "customer", "invoice", "contract", "proposal", "retainer",
+  "müşteri", "fatura", "sözleşme", "teklif", "proje bedeli",
+]
