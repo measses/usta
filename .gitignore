@@ -1,0 +1,16 @@
+# personal configuration and generated output never belong in this repo
+exclude.local.toml
+*.local.toml
+*.local.*
+usta.env
+bundle/
+.usta-export/
+
+# python / tooling
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+
+# os
+.DS_Store

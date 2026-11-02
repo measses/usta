@@ -1,0 +1,4 @@
+# Repos Claude Code may work on (owner/name, one per line).
+# Only repos you own and trust: their scripts run with npm/node/python allowed.
+# The same repos must be selected in your GH_TOKEN (Contents: Read and write).
+# your-github-user/your-side-project
