@@ -285,3 +285,22 @@ def test_card_ignores_timestamps_in_paths(tmp_path, claude):
     _, report = plan(cfg)
     cards = [v for _, _, k, v in report.flags if k == "card"]
     assert len(cards) == 1 and "«…»" in cards[0]
+
+
+def test_wrapped_bullet_and_paragraph_removed_whole(tmp_path, claude):
+    write(claude / "agents" / "wrap.md",
+          "---\nname: wrap\ndescription: notes about Acme and more\ntype: user\n---\n\n"
+          "- Works at Acme Corp doing incident and problem\n"
+          "  management, wants DevOps skills.\n"
+          "  - child detail under the Acme item\n"
+          "- Ships side projects on weekends.\n\n"
+          "Acme review happened last week and the\nresult was positive.\n\n"
+          "Unrelated paragraph stays.\n")
+    cfg = config(tmp_path, claude, include={"agents": ["wrap.md"]}, exclude={"keywords": ["acme"]})
+    files, report = plan(cfg)
+    text = files["agents/wrap.md"].decode()
+    assert "management, wants" not in text and "child detail" not in text
+    assert "result was positive" not in text
+    assert "- Ships side projects on weekends." in text and "Unrelated paragraph stays." in text
+    # front matter stays line-level: only the matching line goes, the block survives
+    assert text.startswith("---\nname: wrap\ntype: user\n---\n")

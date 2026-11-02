@@ -63,7 +63,7 @@ Ayrıntılar: [SECURITY.md](SECURITY.md).
 
 ## Durum
 
-Erken sürüm (v0.1). Export aracı ve betikler testlerle doğrulanıyor. Bilinen eksikler: uzun görev bitince botu uyandıran webhook yok, şimdilik tek Claude hesabı destekleniyor.
+Erken sürüm (v0.1). Export aracı ve betikler testlerle doğrulanıyor. v0.1.0 gerçek bir Grok Bot bulut bilgisayarında uçtan uca denendi: kurulum, hafıza kontrolü, deneme reposunda gerçek bir düzeltme, push kilidi ve sıfırlanma provası. v0.1.1 o denemenin bulduğu iki sorunu düzeltiyor ([CHANGELOG](CHANGELOG.md)). Bilinen eksikler: uzun görev bitince botu uyandıran webhook yok, şimdilik tek Claude hesabı destekleniyor.
 
 ## Lisans
 

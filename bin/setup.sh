@@ -28,11 +28,17 @@ usta_secret GH_TOKEN
 usta_secret BUNDLE_TOKEN
 usta_git_auth
 
-# 1. PATH and config dir for future shells
+# 1. PATH for future shells. Nothing else goes into shared rc files: the
+#    cloud computer is shared, and CLAUDE_CONFIG_DIR there would change every
+#    `claude` call. v0.1.0 wrote a "# usta PATH" block with exports; remove it.
 for rc in "$HOME/.bashrc" "$HOME/.profile"; do
+  if [[ -f "$rc" ]] && grep -q '^# usta PATH$' "$rc"; then
+    awk '$0 == "# usta PATH" { skip = 3; next }
+         skip > 0 && /^export (PATH|USTA_ROOT|CLAUDE_CONFIG_DIR)=/ { skip--; next }
+         { skip = 0; print }' "$rc" > "$rc.usta-tmp" && cat "$rc.usta-tmp" > "$rc" && rm -f "$rc.usta-tmp"
+  fi
   # shellcheck disable=SC2016  # $HOME/$PATH must stay literal in the rc file
-  grep -q '# usta PATH' "$rc" 2>/dev/null || printf '\n# usta PATH\nexport PATH="$HOME/.local/bin:$PATH"\nexport USTA_ROOT="%s"\nexport CLAUDE_CONFIG_DIR="%s"\n' \
-    "$USTA_ROOT" "$CLAUDE_CONFIG_DIR" >> "$rc"
+  grep -q '^# usta: PATH$' "$rc" 2>/dev/null || printf '\n# usta: PATH\nexport PATH="$HOME/.local/bin:$PATH"\n' >> "$rc"
 done
 export PATH="$BIN:$PATH"
 
@@ -106,16 +112,23 @@ if [[ -n "$skills" ]]; then
   rm -rf "$tmp"
 fi
 
-# 6. Command shims (point at this kit)
+# 6. Command shims (point at this kit). usta-claude = claude with usta's config.
 for cmd in usta-run usta-push; do
   printf '#!/usr/bin/env bash\nexport USTA_ROOT="%s"\nexec "%s/bin/%s" "$@"\n' "$USTA_ROOT" "$KIT" "$cmd" > "$BIN/$cmd"
   chmod 755 "$BIN/$cmd"
 done
+# shellcheck disable=SC2016  # $HOME/$PATH/$@ are expanded by the shim at run time
+printf '#!/usr/bin/env bash\nexport CLAUDE_CONFIG_DIR="%s"\nexport PATH="$HOME/.local/bin:$PATH"\nexec claude "$@"\n' \
+  "$CLAUDE_CONFIG_DIR" > "$BIN/usta-claude"
+chmod 755 "$BIN/usta-claude"
 
-# 7. Repos from repos.txt (owner/name per line)
-if [[ -n "${USTA_GIT_NAME:-}" ]]; then git config --global user.name "$USTA_GIT_NAME"; fi
-if [[ -n "${USTA_GIT_EMAIL:-}" ]]; then git config --global user.email "$USTA_GIT_EMAIL"; fi
+# 7. Repos from repos.txt (owner/name per line). The commit identity is set
+#    per repo, never globally, so other tools on the shared computer keep theirs.
 export GIT_TOKEN="${GH_TOKEN:-}"
+set_identity() {
+  if [[ -n "${USTA_GIT_NAME:-}" ]]; then command git -C "$1" config user.name "$USTA_GIT_NAME"; fi
+  if [[ -n "${USTA_GIT_EMAIL:-}" ]]; then command git -C "$1" config user.email "$USTA_GIT_EMAIL"; fi
+}
 if [[ -f "$REPOS_FILE" ]]; then
   while read -r full _; do
     [[ -z "$full" || "$full" == \#* ]] && continue
@@ -126,7 +139,9 @@ if [[ -f "$REPOS_FILE" ]]; then
       log "cloned $full"
     else
       log "clone failed: $full"
+      continue
     fi
+    set_identity "$USTA_ROOT/repos/$name"
   done < "$REPOS_FILE"
 else
   log "no repos file at $REPOS_FILE"

@@ -19,6 +19,7 @@ cat > "$T/fakebin/claude" <<EOF
 #!/usr/bin/env bash
 if [[ "\${1:-}" == "--version" ]]; then echo "9.9.9 (Claude Code)"; exit 0; fi
 printf '%s\n' "\$@" > "$T/claude-args"
+echo "\${CLAUDE_CONFIG_DIR:-}" > "$T/claude-config-dir"
 pwd > "$T/claude-cwd"
 echo '{"is_error": false, "result": "OK", "session_id": "s-1", "num_turns": 1}'
 EOF
@@ -53,6 +54,13 @@ run_env() {
     "$@"
 }
 
+# a v0.1.0 install left this block; setup must remove it and keep other lines
+# shellcheck disable=SC2016  # literal rc content
+printf 'alias ll="ls -l"\n\n# usta PATH\nexport PATH="$HOME/.local/bin:$PATH"\nexport USTA_ROOT="/old"\nexport CLAUDE_CONFIG_DIR="/old/claude-config"\nexport KEEP_ME=1\n' > "$T/home/.bashrc"
+printf '[user]\n\tname = Someone Else\n\temail = else@example.com\n' > "$T/home/.gitconfig"
+echo 'USTA_GIT_NAME="Usta Test"' >> "$T/usta.env"
+echo 'USTA_GIT_EMAIL=usta@example.com' >> "$T/usta.env"
+
 # --- setup.sh, twice (idempotent)
 out1="$(run_env bash "$KIT/bin/setup.sh" 2>&1)" || { echo "$out1"; fail "setup run 1"; }
 out2="$(run_env bash "$KIT/bin/setup.sh" 2>&1)" || { echo "$out2"; fail "setup run 2"; }
@@ -67,7 +75,15 @@ grep -q '^@memory/MEMORY.md$' "$C/CLAUDE.md" && grep -q '^@personal/RULES.md$' "
 grep -q 'usta:imports' "$C/CLAUDE.md" && fail "placeholder left in CLAUDE.md" || ok "placeholder replaced"
 [[ -d "$T/root/repos/proj/.git" ]] && ok "repo cloned" || fail "repo clone"
 [[ -x "$T/home/.local/bin/usta-run" && -x "$T/home/.local/bin/usta-push" ]] && ok "command shims installed" || fail "shims"
-[[ "$(grep -c '# usta PATH' "$T/home/.bashrc")" == 1 ]] && ok ".bashrc edited once" || fail ".bashrc"
+[[ "$(grep -c '^# usta: PATH$' "$T/home/.bashrc")" == 1 ]] && ok ".bashrc PATH block added once" || fail ".bashrc"
+grep -q 'CLAUDE_CONFIG_DIR\|USTA_ROOT' "$T/home/.bashrc" && fail "rc still exports usta config" || ok "legacy rc exports removed"
+grep -q '^# usta PATH$' "$T/home/.bashrc" && fail "legacy marker left" || ok "legacy marker removed"
+grep -q 'alias ll=' "$T/home/.bashrc" && grep -q 'KEEP_ME=1' "$T/home/.bashrc" && ok "other rc lines kept" || fail "rc lines lost"
+[[ "$(HOME="$T/home" git config --global user.name)" == "Someone Else" ]] && ok "global git identity untouched" || fail "global identity changed"
+[[ "$(git -C "$T/root/repos/proj" config user.name)" == "Usta Test" ]] && ok "repo-local identity set" || fail "repo identity"
+[[ -x "$T/home/.local/bin/usta-claude" ]] && ok "usta-claude shim installed" || fail "usta-claude shim"
+run_env "$T/home/.local/bin/usta-claude" -p x >/dev/null && [[ "$(cat "$T/claude-config-dir")" == "$T/root/claude-config" ]] \
+  && ok "usta-claude uses usta config" || fail "usta-claude config dir"
 if grep -rq "$FAKE_TOKEN" "$T/root" "$T/home" 2>/dev/null; then fail "token written to disk"; else ok "no token on disk"; fi
 
 # --- usta-run

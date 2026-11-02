@@ -22,7 +22,7 @@ There are two parts, run by two different agents:
 **A1. Get the release** **[ask]**
 
 ```bash
-VERSION=v0.1.0
+VERSION=v0.1.1
 curl -fsSLO "https://github.com/measses/usta/releases/download/$VERSION/usta-$VERSION.tar.gz"
 curl -fsSLO "https://github.com/measses/usta/releases/download/$VERSION/SHA256SUMS"
 sha256sum -c SHA256SUMS 2>/dev/null || shasum -a 256 -c SHA256SUMS   # must print OK
@@ -84,7 +84,7 @@ For each flagged line the human can:
 
 **B1. Get and verify the release** **[ask]**. Same commands as A1, run in `/workspace/usta/kit`. Read `bin/setup.sh`, `bin/usta-run`, `bin/usta-push` and `bin/_lib.sh`, then summarize them for the human:
 - They install Claude Code in user space and do not use `sudo`.
-- They write to `$USTA_ROOT`, `~/.local/bin`, `~/.bashrc` and `~/.profile`.
+- They write to `$USTA_ROOT` and `~/.local/bin`, and add one PATH line to `~/.bashrc` and `~/.profile`. The git identity is set per cloned repo, never globally, so other tools on the shared computer are not affected.
 - `setup.sh` clones from GitHub: the human's bundle repo, the repos in `repos.txt` and the public `anthropics/skills`.
 - `usta-run` reads an egress-country URL before every run.
 
@@ -94,7 +94,7 @@ For each flagged line the human can:
 
 **B4. Install** **[ask]**. Run `bash /workspace/usta/kit/bin/setup.sh`. Report these output lines: `claude`, `egress`, `claude test`, `skills/agents/repos` and `done`.
 
-**B5. Verify memory.** From `/workspace/usta`, run `claude -p "In two lines: what do you know about me and my projects?" --output-format json`. Show only the `result` field. It should reflect the bundle and nothing the human excluded.
+**B5. Verify memory.** Run `usta-claude -p "In two lines: what do you know about me and my projects?" --output-format json` (`usta-claude` is `claude` with usta's config). Show only the `result` field. It should reflect the bundle and nothing the human excluded.
 
 **B6. Your standing instructions.** If you will be the bot that uses usta, keep these rules:
 - **Getting work.** Take coding tasks only from the human, or from another bot after the human approves it.

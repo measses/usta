@@ -55,6 +55,7 @@ python3 export/usta_export.py build --approve          # write bundle/
 cp usta.env.example /workspace/usta/usta.env           # edit: bundle repo, git identity
 cp repos.example.txt /workspace/usta/repos.txt         # edit: repos Claude may work on
 bash bin/setup.sh
+usta-claude -p 'What do you know about my projects?'   # claude with usta's config
 usta-run my-repo 'Add a dark mode toggle. Commit on a new branch.'
 ```
 
@@ -104,11 +105,12 @@ Non-secret settings live in `$USTA_ROOT/usta.env` (see [usta.env.example](usta.e
 | `USTA_PROTECTED_BRANCHES` | `main master production prod` | branches `usta-push` refuses |
 | `USTA_ALLOWED_TOOLS` / `USTA_DENIED_TOOLS` | see `bin/usta-run` | Claude Code tool permissions |
 | `USTA_TIMEOUT` / `USTA_MAX_TURNS` | `1800` / `40` | per-run limits |
+| `USTA_GIT_NAME` / `USTA_GIT_EMAIL` | – | commit identity, set per cloned repo (never global) |
 | `USTA_ANTHROPIC_SKILLS` | `docx pdf pptx xlsx skill-creator` | public skills added from anthropics/skills |
 
 ## Status
 
-Early (v0.1). The export tool and scripts are covered by tests (`pytest`, `tests/test_scripts.sh` with a fake Claude and local git repos). Known gaps: no wake-up webhook when a long task finishes (the bot has to check back), one Claude account only.
+Early (v0.1). The export tool and scripts are covered by tests (`pytest`, `tests/test_scripts.sh` with a fake Claude and local git repos). v0.1.0 was run end to end on a real Grok Bot cloud computer: install, memory check, a real fix in a test repo, the push gate and a reset rehearsal; v0.1.1 fixes the two issues that run found (see [CHANGELOG](CHANGELOG.md)). Known gaps: no wake-up webhook when a long task finishes (the bot has to check back), one Claude account only.
 
 ## Development
 

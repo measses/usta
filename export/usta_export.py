@@ -71,6 +71,9 @@ KEY_VALUE = re.compile(
 # Prose never needs the value; this also keeps strict `API_KEY=` scanners quiet.
 PROSE_KEY = re.compile(r"\b([A-Za-z0-9_]*_?API_?KEY)\S*?\s*[:=]\s*\S+")
 PROSE_SUFFIXES = {".md", ".txt", ".markdown"}
+HEADING = re.compile(r"(#{1,6})\s")
+LIST_ITEM = re.compile(r"^(\s*)(?:[-*+]|\d+[.)])\s")
+SENTENCE_END = re.compile(r"[.!?:;)\]\"'`»…]$")
 
 EMAIL = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
 PHONE = re.compile(r"(?<![\w+])(?:\+\d{1,3}[ .-]?\(?\d{2,4}\)?[ .-]?\d{3}[ .-]?\d{2,4}(?:[ .-]?\d{2,4})?|0\s?5\d{2}[ .-]?\d{3}[ .-]?\d{2}[ .-]?\d{2})(?!\w)")
@@ -321,19 +324,72 @@ class Filter:
                     self.report.flags.append((rel, n, kind, _preview(line, m.start(), m.end())))
         return line
 
+    def _kw_hit(self, line: str) -> bool:
+        return any(rx.search(line) for _, rx in self.kw)
+
+    def _prose_blocks_to_drop(self, lines: list) -> set:
+        """Indices of whole paragraphs / list items that contain a keyword.
+
+        Removing only the matching line leaves the rest of a wrapped sentence
+        behind ("...management yapıyor"), so prose is filtered per block.
+        Front matter, headings, table rows and blank lines stay line-level.
+        """
+        drop: set[int] = set()
+        start = 0
+        if lines and lines[0].strip() == "---":
+            for k in range(1, len(lines)):
+                if lines[k].strip() == "---":
+                    start = k + 1
+                    break
+
+        def boundary(line: str) -> bool:
+            s = line.strip()
+            return not s or bool(HEADING.match(line)) or s.startswith("|")
+
+        i = start
+        while i < len(lines):
+            if boundary(lines[i]):
+                i += 1
+                continue
+            m = LIST_ITEM.match(lines[i])
+            indent = len(m.group(1)) if m else len(lines[i]) - len(lines[i].lstrip())
+            j = i + 1
+            while j < len(lines) and not boundary(lines[j]):
+                nxt = lines[j]
+                lm = LIST_ITEM.match(nxt)
+                if lm:
+                    if not m or len(lm.group(1)) <= indent:
+                        break  # next sibling item, or a list after a paragraph
+                    j += 1     # nested item belongs to its parent
+                    continue
+                nxt_indent = len(nxt) - len(nxt.lstrip())
+                wrapped = not SENTENCE_END.search(lines[j - 1].rstrip())
+                if not (wrapped or (m and nxt_indent > indent)):
+                    break      # a new, complete line: its own block
+                j += 1
+            if any(self._kw_hit(lines[k]) for k in range(i, j)):
+                drop.update(range(i, j))
+            i = j
+        return drop
+
     def text(self, rel: str, text: str) -> str:
         prose = Path(rel).suffix.lower() in PROSE_SUFFIXES
+        lines = text.splitlines(keepends=True)
+        blocks = self._prose_blocks_to_drop(lines) if prose and self.kw else set()
         out = []
         skip_level = 0  # inside a markdown section whose heading matched a keyword
-        for n, line in enumerate(text.splitlines(keepends=True), 1):
-            heading = re.match(r"(#{1,6})\s", line) if prose else None
+        for n, line in enumerate(lines, 1):
+            heading = HEADING.match(line) if prose else None
             if skip_level:
                 if heading and len(heading.group(1)) <= skip_level:
                     skip_level = 0
                 else:
                     self.report.removed_lines += 1
                     continue
-            if any(rx.search(line) for _, rx in self.kw):
+            if n - 1 in blocks:
+                self.report.removed_lines += 1
+                continue
+            if self._kw_hit(line):
                 self.report.removed_lines += 1
                 if heading:
                     skip_level = len(heading.group(1))
